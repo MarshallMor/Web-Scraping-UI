@@ -3,7 +3,14 @@ from googlesearch import search
 import customtkinter as ctk
 import tkinter as tk
 from time import sleep
-import os
+import os, shutil
+import webbrowser
+from functools import partial
+import requests
+from bs4 import BeautifulSoup
+import operator
+from collections import Counter
+
 #Global values
 Basic_Font_ColorL = "#000000"
 Basic_Background_ColorL = "#FFFFFF"
@@ -11,9 +18,9 @@ Basic_Font_ColorD = "#FFFFFF"
 Basic_Background_ColorD = "#000000"
 search_path = "Models/file.txt"
 default_font = "Roboto"
-default_font_size = 15
+default_font_size = 12
 search_query = ''
-####CHANGE NUMBERS TO STRINGS
+number_messages = 1
 options_num_links = ['1','2','3','4','5','6','7','8','9','10']
 num_links = 3
 class MyFrame(ctk.CTkFrame):
@@ -27,7 +34,7 @@ class MyFrame(ctk.CTkFrame):
 class MainWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.geometry("800x600")# size
+        self.geometry("800x700")# size
         self.title("Review Estimaor Start")#title
 
 
@@ -55,9 +62,19 @@ class MainWindow(ctk.CTk):
         self.clearbutton = ctk.CTkButton(self.leftframe, text = "Clear", fg_color = (Basic_Font_ColorL, Basic_Font_ColorD),text_color= (Basic_Background_ColorL, Basic_Background_ColorD) ,command = self.clear)
         self.clearbutton.grid(row = 4, column = 0, columnspan = 1,sticky = "w", padx = 20, pady =20)
 
+        self.clearlinksbutton = ctk.CTkButton(self.leftframe, text = "Clear Files", fg_color = (Basic_Font_ColorL, Basic_Font_ColorD),text_color= (Basic_Background_ColorL, Basic_Background_ColorD) ,command = self.clear_links)
+        self.clearlinksbutton.grid(row = 5, column = 0, columnspan = 1,sticky = "w", padx = 20, pady =20)
+
+        self.clearmessagesbutton = ctk.CTkButton(self.leftframe, text = "Clear Messages", fg_color = (Basic_Font_ColorL, Basic_Font_ColorD),text_color= (Basic_Background_ColorL, Basic_Background_ColorD) ,command = self.clear_messages)
+        self.clearmessagesbutton.grid(row = 6, column = 0, columnspan = 1,sticky = "w", padx = 20, pady =20)
+
+        self.wordlistbutton = ctk.CTkButton(self.leftframe, text = "Create Wordlist", fg_color = (Basic_Font_ColorL, Basic_Font_ColorD),text_color= (Basic_Background_ColorL, Basic_Background_ColorD) ,command = self.start)
+        self.wordlistbutton.grid(row = 5, column = 2, columnspan = 1,sticky = "w", padx = 20, pady =20)
+
         self.rightframe = MyFrame(self, fg_color = (Basic_Background_ColorL, Basic_Background_ColorD))
         self.rightframe.grid(row = 0, column = 6, columnspan = 2, rowspan = 2,sticky = "w", padx = 10, pady =30)
 
+    
 
 
     def numberoption(self, choice):
@@ -71,38 +88,169 @@ class MainWindow(ctk.CTk):
     def search_google(self):
         links = []
         global num_links
+        global number_messages
         num_results = num_links
         query = self.text_area.get("1.0", "end - 1 chars")
         ####CHECK TO SEE IF SEARCH HAS ALREDY BEEN MADE
-        if os.path.isfile(f'./links/{query}{num_results}.txt') == True and os.path.isfile('./model_tfidf') == True:
-                self.Message.configure(text = "The model number 1 is saved")
+        if os.path.isfile(f'./links/{query}_{num_results}.txt') == True:
                 # Perform Google search and retrieve top results
-                with open('./links/{query}{num_results}.txt', 'r') as file:
+                with open(f'./links/{query}_{num_results}.txt', 'r') as file:
                     # Iterate over each line in the file
                     for line in file:
                         # Process each line as needed
-                        print(line.strip())  # Print the line after removing leading and trailing whitespaces
+                        if line != f'The searched string is {query}' or line != f'The number of links are {num_results}':
+                            print("Worked")
+                        else:
+                            self.create_hyperlink(line)
+                            print(line.strip())  
+                            # Print the line after removing leading and trailing whitespaces
+                self.Comment = ctk.CTkLabel(self.rightframe, fg_color = (Basic_Background_ColorL, Basic_Background_ColorD ),font = (default_font,default_font_size)  , text = f"The file is already made at {query}_{num_results}.txt")
+                self.Comment.grid(row = number_messages, column = 6,sticky = "nw", padx = 10, pady =10)
+                number_messages = number_messages + 1
+
         else:
                 results = search(query, num=num_results, stop=num_results)
-
-                # Iterate through the results and store the links
-                with open(f'./links/{query}{num_results}.txt', 'w') as file:
-                    file.write(f'The searched string is {query}' + '\n')
-                    file.write(f'The number of links are {num_results}' + '\n')
                 for link in results:
-                    links.append(link)
-                    print(link)
+                        links.append(link)
+                        print(link)
 
                 # Save the links to a file
-                with open(f'./links/{query}{num_results}.txt', 'w') as file:
+                with open(f'./links/{query}_{num_results}.txt', 'a') as file:
+                    file.write(f'The searched string is {query}' + '\n')
+                    file.write(f'The number of links are {num_results}' + '\n' + '\n')
                     for link in links:
+                        self.create_hyperlink(link)
                         file.write(link + '\n')
+                
+                self.Comment = ctk.CTkLabel(self.rightframe, fg_color = (Basic_Background_ColorL, Basic_Background_ColorD ),font = (default_font,default_font_size)  , text = f"The new file was created with the name {query}_{num_results}.txt")
+                self.Comment.grid(row = number_messages, column = 6,sticky = "nw", padx = 10, pady =10)
+                number_messages = number_messages + 1
+                print(f"\nTop {num_results} links saved to {query}{num_results}.txt")
+        number_messages = 1
 
-                print(f"\nTop {num_results} links saved to '{query}{num_results}.txt'")
+    def create_hyperlink(self, link):
+        global number_messages
+        label = tk.Label(self.rightframe, text=f"Hyperlink {number_messages}", fg="blue", cursor="hand2")
+        label.grid(row=number_messages, column=6, sticky="nw", padx=10, pady=10)
+        label.bind("<Button-1>", partial(self.callback, link))
+        number_messages = number_messages + 1
+
+    def grab_urls(self):
+        links = []
+        global num_links
+        global number_messages
+        num_results = num_links
+        query = self.text_area.get("1.0", "end - 1 chars")
+        ####CHECK TO SEE IF SEARCH HAS ALREDY BEEN MADE
+        if os.path.isfile(f'./links/{query}_{num_results}.txt') == True:
+                # Perform Google search and retrieve top results
+                with open(f'./links/{query}_{num_results}.txt', 'r') as file:
+                    # Iterate over each line in the file
+                    for line in file:
+                        # Process each line as needed
+                        if line != f'The searched string is {query}' or line != f'The number of links are {num_results}':
+                            print("Worked")
+                        else:
+                            self.create_hyperlink(line)
+                            links.append(line)
+                            print(line.strip()) 
+                self.Comment = ctk.CTkLabel(self.rightframe, fg_color = (Basic_Background_ColorL, Basic_Background_ColorD ),font = (default_font,default_font_size)  , text = f"Link list is made")
+                self.Comment.grid(row = number_messages, column = 6,sticky = "nw", padx = 10, pady =10)
+        else:
+            self.Comment = ctk.CTkLabel(self.rightframe, fg_color = (Basic_Background_ColorL, Basic_Background_ColorD ),font = (default_font,default_font_size)  , text = f"No file name: {query}_{num_results}.txt")
+            self.Comment.grid(row = number_messages, column = 6,sticky = "nw", padx = 10, pady =10)
+                
+        number_messages = 1
+        return links 
+    def create_dictionary(self, clean_list):
+        word_count = {}
+
+        for word in clean_list:
+            if word in word_count:
+                word_count[word] += 1
+            else:
+                word_count[word] = 1
+
+        c = Counter(word_count)
+        top = c.most_common(10)
+        print(top)
+
+    def clean_wordlist(self, wordlist):
+        global num_links
+        num = num_links
+        query = self.text_area.get("1.0", "end - 1 chars")
+        clean_list = []
+
+        for word in wordlist:
+            symbols = "!@#$%^&*()_-+={[}]|\\;:\"<>?/., "
+
+            for symbol in symbols:
+                word = word.replace(symbol, '')
+
+            if len(word) > 0:
+                clean_list.append(word)
+
+        self.create_dictionary(clean_list)
+        self.save_to_file(clean_list, f'{query}{num}WL.txt')
+
+    def start(self):
+        urls = self.grab_urls()
+        all_wordlists = []
+
+        for url in urls:
+            wordlist = []
+            source_code = requests.get(url).text
+            soup = BeautifulSoup(source_code, 'html.parser')
+
+            for each_text in soup.find_all('div', {'class': 'entry-content'}):
+                content = each_text.text
+                words = content.lower().split()
+                
+                for each_word in words:
+                    wordlist.append(each_word)
+
+            all_wordlists.append(wordlist)
+
+        # Flatten the list of lists
+        all_words = [word for sublist in all_wordlists for word in sublist]
+        self.clean_wordlist(all_words)
+
+    
+    
+    def save_to_file(self, wordlist, filename):
+        with open(f'./wordlists/{filename}', 'a') as file:
+            for word in wordlist:
+                file.write(word + '\n')
+
+# Example usage:
+# Replace 'your_url_1', 'your_url_2', etc. with the URLs you want to analyze
 
     def test(self):
         self.search_google()
+    def callback(self, url):
+        webbrowser.open_new(url)
+    def clear_links(self):
+        folder = './links'
+        for filename in os.listdir(folder):
+            file_path = os.path.join(folder, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
+    def clear_messages(self):
+        for widget in self.rightframe.winfo_children():
+            widget.destroy()
+         
+        self.rightframe.pack_forget()
 
+        self.rightframe = MyFrame(self, fg_color = (Basic_Background_ColorL, Basic_Background_ColorD))
+        self.rightframe.grid(row = 0, column = 6, columnspan = 2, rowspan = 2,sticky = "w", padx = 10, pady =30)
+
+
+    
 ctk.set_appearance_mode("system")
 # Perform the Google search and save the top three links
 root = MainWindow()
