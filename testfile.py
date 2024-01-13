@@ -16,7 +16,7 @@ def start(url):
 	# empty list to store the contents of
 	# the website fetched from our web-crawler
 	wordlist = []
-	source_code = requests.get(url).text
+	source_code = requests.get(url, timeout=60).text
 
 	# BeautifulSoup object which will
 	# ping the requested url for data
