@@ -1,9 +1,8 @@
 # Python3 program for a word frequency
 # counter after crawling/scraping a web-page
-import requests
 from bs4 import BeautifulSoup
-import operator
 from collections import Counter
+from security import safe_requests
 
 '''Function defining the web-crawler/core
 spider, which will fetch information from
@@ -16,7 +15,7 @@ def start(url):
 	# empty list to store the contents of
 	# the website fetched from our web-crawler
 	wordlist = []
-	source_code = requests.get(url).text
+	source_code = safe_requests.get(url).text
 
 	# BeautifulSoup object which will
 	# ping the requested url for data
