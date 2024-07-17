@@ -212,7 +212,7 @@ class MainWindow(ctk.CTk):
 
         for url in urls:
             wordlist = []
-            source_code = requests.get(url).text
+            source_code = requests.get(url, timeout=60).text
             soup = BeautifulSoup(source_code, 'html.parser')
 
             for each_text in soup.find_all('div', {'class': 'entry-content'}):
