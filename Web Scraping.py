@@ -6,13 +6,14 @@ from time import sleep
 import os, shutil
 import webbrowser
 from functools import partial
-import requests
 from bs4 import BeautifulSoup
 import operator
 from collections import Counter
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from security import safe_requests
+
 nltk.download('stopwords')
 nltk.download('punkt')
 stop_words = set(stopwords.words('english'))
@@ -212,7 +213,7 @@ class MainWindow(ctk.CTk):
 
         for url in urls:
             wordlist = []
-            source_code = requests.get(url).text
+            source_code = safe_requests.get(url).text
             soup = BeautifulSoup(source_code, 'html.parser')
 
             for each_text in soup.find_all('div', {'class': 'entry-content'}):
